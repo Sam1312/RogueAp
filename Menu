@@ -1,0 +1,73 @@
+GNU nano 2.7.4                 Fichier : script.sh                          
+
+
+
+
+!/bin/bash
+#
+# Nom                 : 3SI1.Yassim.sh
+# Description   : Créer 10 comptes users avec certaines caractéristiques
+#
+# Exemple           :
+#
+# Auteur        : hamedyassim@gmail.com
+# Version       : 1.0
+
+#read -p " Veuillez saisir le nomde l'utilisateur que vous souhaitez ajouté" $
+clear
+#!/bin/bash
+toilet -F gay -F border "Admin users"
+echo  "======================================================================$
+echo "Faites votre choix"
+echo "  1)Savoir si l'utilisateur est présent ✅"
+echo "  2)Ajouter un utilisateur"
+echo "  3)Supprimer un utilisateur"
+echo "  4)Quitter"
+echo "=======================================================================$
+read n
+case $n in
+  1) read -p "Veuillez saisir le nom de l'utilisateur en question " user
+     stockage=$(grep -ic $user /etc/passwd)
+        if [ $stockage -eq 1 ]
+          then 
+                echo -e " Il existe bien\n   aurevoir "
+                sleep 10 | clear                
+exit
+else
+              
+                echo " il faut le crééer "
+fi
+        
+        read -p " Si vous voulez l'ajouter veuillez Appuiyer sur 1 ou 2 pour $
+        
+        if [ $creation -eq 1 ]
+        then 
+                read -p "saisisez le mot de passe de que vous voulez mettre p$
+                useradd -m -p $(mkpasswd -m sha-512 $mdp) -s /bin/bash $user
+        else
+             echo "AUREVOIR"
+fi
+;;
+  2) echo "Vous avez choisis l'ajout d'un utilisateur : "
+        read -p "Veuillez saisir le nom de l'utilisateur et son mdp" nom  mdp2
+        useradd -m -p $(mkpasswd -m sha-512 $mdp2) -s /bin/bash $nom
+        echo "Utilisateur Ajouter"
+        ;; 
+  3) echo "Supression d'utilisateurs"
+        read -p " Veuillez saisir le nom de l'utilisateur que vous voulez sup$
+                userdel -r $del
+                 echo "Utilisateur supprimer"
+                sleep 10 
+                clear;;
+  4) echo "You chose Option 4"
+                clear;;
+  *) echo "invalid option"
+exit;;
+esac
+
+
+
+
+                               [ Marque posée ]
+^G Aide        ^O Écrire      ^W Chercher    ^K Couper      ^J Justifier
+^X Quitter
